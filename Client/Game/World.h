@@ -11,6 +11,12 @@
 
 class World {
 public:
+    struct PlayerInput {
+        float yaw = 0.0f;
+        float pitch = 0.0f;
+        bool triggerHeld = false;
+    };
+
     struct Target {
         glm::vec3 pos{ 0.0f };
         glm::vec3 vel{ 0.0f };
@@ -39,6 +45,9 @@ public:
     void fire();                                    // 클릭 한 번 (GridShot·Boss)
     void setTrigger(bool held);                     // 좌클릭을 누르고 있나 (Tracking·보호막)
 
+    void setAim(int slot, float yawDeg, float pitchDeg);
+    void setTrigger(int slot, bool held);
+
     // ---- 진행 ----
     void tick(float dt);                            // 매 프레임 호출
     void drainEvents(std::vector<GameEvent>& out);  // 이번 프레임에 일어난 사건 (파편 효과용)
@@ -50,6 +59,7 @@ public:
     RoundType round() const { return kRoundOrder[roundIndex_]; }
     const std::vector<Target>& targets() const { return targets_; }
     const Boss& boss() const { return boss_; }
+    const PlayerInput* playerInput(int slot) const;
     int score() const { return score_; }                         // 전체 점수 (모든 라운드 합)
     int roundScore(int round) const { return roundScore_[round]; }
     int roundGoal() const { return roundGoal_; }                 // 통과 점수 (Boss는 0 = 처치가 조건)
@@ -109,9 +119,10 @@ private:
     float phaseTime_ = 0.0f;
     int roundIndex_ = 0;
 
-    float yaw_ = 0.0f;
-    float pitch_ = 0.0f;
-    bool trigger_ = false;
+    static constexpr int kMaxPlayers = 3;
+    static constexpr int kLocalSlot = 0;
+    static bool validSlot(int slot) { return slot >= 0 && slot < kMaxPlayers; }
+    PlayerInput playerInputs_[kMaxPlayers]{};
 
     std::vector<Target> targets_;
     Boss boss_;

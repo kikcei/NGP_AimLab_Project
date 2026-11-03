@@ -47,8 +47,14 @@ void World::start() {
 }
 
 void World::setAim(float yawDeg, float pitchDeg) {
-    yaw_ = yawDeg;
-    pitch_ = aim::clampPitch(pitchDeg);
+    setAim(kLocalSlot, yawDeg, pitchDeg);
+}
+
+void World::setAim(int slot, float yawDeg, float pitchDeg) {
+    if (!validSlot(slot)) return;
+    PlayerInput& input = playerInputs_[slot];
+    input.yaw = yawDeg;
+    input.pitch = aim::clampPitch(pitchDeg);
 }
 
 void World::fire() {
@@ -81,8 +87,13 @@ void World::fire() {
 }
 
 void World::setTrigger(bool held) {
-    trigger_ = held;
-    if (!held) {
+    setTrigger(kLocalSlot, held);
+}
+
+void World::setTrigger(int slot, bool held) {
+    if (!validSlot(slot)) return;
+    playerInputs_[slot].triggerHeld = held;
+    if (slot == kLocalSlot && !held) {
         // 원본과 같게: 버튼을 떼면 진행도 초기화
         for (auto& t : targets_) t.progress = 0.0f;
     }
@@ -143,7 +154,7 @@ void World::startMatch() {
 void World::startRound(int index) {
     roundIndex_ = std::clamp(index, 0, cfg::kRoundCount - 1);
     clearEntities();
-    trigger_ = false;
+    playerInputs_[kLocalSlot].triggerHeld = false;
 
     switch (round()) {
     case RoundType::GridShot: spawnGridShot(); break;
@@ -179,7 +190,7 @@ bool World::goalReached() const {
 
 void World::resetToTitle() {
     clearEntities();
-    trigger_ = false;
+    playerInputs_[kLocalSlot].triggerHeld = false;
     roundIndex_ = 0;
     enterPhase(Phase::Title, 0.0f);
 }
@@ -255,7 +266,7 @@ void World::updateTracking(float dt) {
     }
 
     // 2) 지금 조준 중인 표적 (버튼을 누르고 있을 때만)
-    const int aimed = trigger_ ? pickTarget(aim::eyePosition(), aimDirection()) : -1;
+    const int aimed = playerInputs_[kLocalSlot].triggerHeld ? pickTarget(aim::eyePosition(), aimDirection()) : -1;
 
     // 3) 계속 조준하면 진행도 증가, 벗어나면 초기화
     for (size_t i = 0; i < targets_.size(); ++i) {
@@ -315,7 +326,7 @@ void World::updateBoss(float dt) {
     if (boss_.shield) {
         // 트래킹 페이즈: 좌클릭을 누른 채 보스를 조준하고 있으면 게이지가 찬다
         float t = 0.0f;
-        shieldTracked_ = trigger_ && aim::raySphere(aim::eyePosition(), aimDirection(), boss_.pos, boss_.radius, t);
+        shieldTracked_ = playerInputs_[kLocalSlot].triggerHeld && aim::raySphere(aim::eyePosition(), aimDirection(), boss_.pos, boss_.radius, t);
         if (shieldTracked_) boss_.shieldHold += dt;
         else boss_.shieldHold = std::max(0.0f, boss_.shieldHold - cfg::kBossShieldDecay * dt);
         if (boss_.shieldHold >= cfg::kBossShieldHold) breakShield();
@@ -391,7 +402,8 @@ void World::hitBoss(const glm::vec3& point) {
 // ============================================================
 
 glm::vec3 World::aimDirection() const {
-    return aim::direction(yaw_, pitch_);
+    const PlayerInput& input = playerInputs_[kLocalSlot];
+    return aim::direction(input.yaw, input.pitch);
 }
 
 void World::credit() {
@@ -449,6 +461,10 @@ void World::bounceInside(glm::vec3& pos, glm::vec3& vel, float radius, const Bou
 // ============================================================
 // 상태 조회
 // ============================================================
+
+const World::PlayerInput* World::playerInput(int slot) const {
+    return validSlot(slot) ? &playerInputs_[slot] : nullptr;
+}
 
 float World::phaseTimeLeft() const {
     return std::max(0.0f, phaseTime_);
