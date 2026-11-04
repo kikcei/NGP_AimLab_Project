@@ -39,6 +39,10 @@ public:
 
     World();
 
+    int joinPlayer();                               // 첫 빈 자리 번호, 자리가 없으면 -1
+    bool joinPlayer(int slot);                      // 지정한 빈 자리에 입장
+    bool leavePlayer(int slot);
+
     // ---- 입력 ----
     void start();                                   // 시작 화면에서 게임 시작
     void setAim(float yawDeg, float pitchDeg);      // 지금 시선 (매 프레임)
@@ -122,7 +126,9 @@ private:
     static constexpr int kMaxPlayers = 3;
     static constexpr int kLocalSlot = 0;
     static bool validSlot(int slot) { return slot >= 0 && slot < kMaxPlayers; }
+    bool isPlayerJoined(int slot) const { return validSlot(slot) && playerJoined_[slot]; }
     PlayerInput playerInputs_[kMaxPlayers]{};
+    bool playerJoined_[kMaxPlayers]{};
 
     std::vector<Target> targets_;
     Boss boss_;

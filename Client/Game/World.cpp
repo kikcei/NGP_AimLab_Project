@@ -12,6 +12,27 @@ World::World()
     resetToTitle();
 }
 
+int World::joinPlayer() {
+    for (int slot = 0; slot < kMaxPlayers; ++slot) {
+        if (joinPlayer(slot)) return slot;
+    }
+    return -1;
+}
+
+bool World::joinPlayer(int slot) {
+    if (!validSlot(slot) || playerJoined_[slot]) return false;
+    playerJoined_[slot] = true;
+    return true;
+}
+
+bool World::leavePlayer(int slot) {
+    if (!isPlayerJoined(slot)) return false;
+    setTrigger(slot, false);
+    playerInputs_[slot] = {};
+    playerJoined_[slot] = false;
+    return true;
+}
+
 // ============================================================
 // 표적이 생기는 영역: 모두 맵 중앙.
 // (플레이어는 중앙에서 kEyeDistance = 14m 떨어져 있으므로 가장 가까운 모서리도 6m 넘게 떨어진다)
@@ -51,14 +72,14 @@ void World::setAim(float yawDeg, float pitchDeg) {
 }
 
 void World::setAim(int slot, float yawDeg, float pitchDeg) {
-    if (!validSlot(slot)) return;
+    if (!isPlayerJoined(slot)) return;
     PlayerInput& input = playerInputs_[slot];
     input.yaw = yawDeg;
     input.pitch = aim::clampPitch(pitchDeg);
 }
 
 void World::fire() {
-    if (phase_ != Phase::RoundPlaying) return;
+    if (!isPlayerJoined(kLocalSlot) || phase_ != Phase::RoundPlaying) return;
 
     const glm::vec3 origin = aim::eyePosition();
     const glm::vec3 dir = aimDirection();
@@ -91,7 +112,7 @@ void World::setTrigger(bool held) {
 }
 
 void World::setTrigger(int slot, bool held) {
-    if (!validSlot(slot)) return;
+    if (!isPlayerJoined(slot)) return;
     playerInputs_[slot].triggerHeld = held;
     if (slot == kLocalSlot && !held) {
         // 원본과 같게: 버튼을 떼면 진행도 초기화
@@ -463,7 +484,7 @@ void World::bounceInside(glm::vec3& pos, glm::vec3& vel, float radius, const Bou
 // ============================================================
 
 const World::PlayerInput* World::playerInput(int slot) const {
-    return validSlot(slot) ? &playerInputs_[slot] : nullptr;
+    return isPlayerJoined(slot) ? &playerInputs_[slot] : nullptr;
 }
 
 float World::phaseTimeLeft() const {

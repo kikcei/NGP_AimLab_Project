@@ -37,6 +37,7 @@ int App::run(int argc, char** argv) {
     input_.install(kInitialWidth, kInitialHeight);
     input_.setMouseLook(true);
 
+    world_.joinPlayer(0);
     camera_.setPosition(aim::eyePosition());
     scenes_.change(std::make_unique<TitleScene>());
 
